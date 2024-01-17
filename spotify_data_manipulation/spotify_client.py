@@ -1,11 +1,9 @@
 """Client for spotify API."""
 import base64
-from typing import Callable, Union
+from typing import Optional, Union
 
-import requests
+from requests import PreparedRequest, Request, Session
 from requests.models import Response
-
-DEFAULT_TIMEOUT: int = 30
 
 
 class SpotifyClient(object):
@@ -21,36 +19,38 @@ class SpotifyClient(object):
         :param client_secret: client secret provided by spotify
         """
         self.access_token: str = self.retrieve_access_token(client_id, client_secret)
-        self.tracks: Track = Track(self)
-        self.albums: Album = Album(self)
-        self.artists: Artist = Artist(self)
+        self.tracks: SpotifyTrackHandler = SpotifyTrackHandler(self)
+        self.albums: SpotifyAlbumHandler = SpotifyAlbumHandler(self)
+        self.artists: SpotifyArtistHandler = SpotifyArtistHandler(self)
 
     @classmethod
     def send_request(
         cls,
         method: str,
-        timeout: int = DEFAULT_TIMEOUT,
-        *args,
-        **kwargs,
+        url: str,
+        headers: dict,
+        request_data: Optional[dict] = None,
     ) -> dict:
         """
         Send requests. Base method.
 
         :param method: HTTP method
-        :param timeout: request timeout
-        :param args: request args
-        :param kwargs: request kwargs
+        :param url: request url
+        :param headers: request headers
+        :param request_data: request data
         :return: response json
         :raises: HTTPError if request failed
         """
-        method_func: Callable = getattr(requests, method.lower(), None)
-        if method_func is None:
-            raise ValueError('method {0} does not exist'.format(method))
-        response: Response = method_func(
-            *args,
-            timeout=timeout,
-            **kwargs,
+        session: Session = Session()
+        request: Request = Request(
+            method=method,
+            url=url,
+            data=request_data,
+            headers=headers,
         )
+        prepped: PreparedRequest = request.prepare()
+        response: Response = session.send(prepped)
+
         response.raise_for_status()
         return response.json()
 
@@ -68,11 +68,11 @@ class SpotifyClient(object):
             method='post',
             url='https://accounts.spotify.com/api/token',
             headers={'Authorization': 'Basic {0}'.format(encoded.decode())},
-            data={'grant_type': 'client_credentials'},
+            request_data={'grant_type': 'client_credentials'},
         )
         return response['access_token']
 
-    def get_item(self, endpoint: str) -> Union[dict, str]:
+    def get_item(self, endpoint: str) -> dict:
         """
         Get item data from spotify by id.
 
@@ -86,8 +86,12 @@ class SpotifyClient(object):
         )
 
 
-class Track(object):
-    """Class for spotify API track data."""
+class SpotifyTrackHandler(object):
+    """
+    Class for spotify API track data.
+
+    https://developer.spotify.com/documentation/web-api/reference/get-track
+    """
 
     def __init__(self, spotify_client: SpotifyClient) -> None:
         """
@@ -107,8 +111,12 @@ class Track(object):
         return self.spotify_client.get_item('tracks/{0}'.format(track_id))
 
 
-class Artist(object):
-    """Class for spotify API artist data."""
+class SpotifyArtistHandler(object):
+    """
+    Class for spotify API artist data.
+
+    https://developer.spotify.com/documentation/web-api/reference/get-an-artist
+    """
 
     def __init__(self, spotify_client: SpotifyClient) -> None:
         """
@@ -128,8 +136,12 @@ class Artist(object):
         return self.spotify_client.get_item('artists/{0}'.format(artist_id))
 
 
-class Album(object):
-    """Class for spotify API album data."""
+class SpotifyAlbumHandler (object):
+    """
+    Class for spotify API album data.
+
+    https://developer.spotify.com/documentation/web-api/reference/get-an-album
+    """
 
     def __init__(self, spotify_client: SpotifyClient) -> None:
         """

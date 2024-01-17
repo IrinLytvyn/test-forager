@@ -27,39 +27,42 @@ class StorageService(object):
         """
         return list(self._storage.values())
 
-    def get_item_by_id(self, key: str) -> Union[dict, str]:
+    def get_item_by_id(self, key: str) -> Union[dict, None]:
         """
         Get spotify item by id.
 
         :param key: spotify item id
-        :return: spotify item if exists else returns string that key doesn't exist
+        :return: spotify item if exists
+        :raises: KeyError if key doesn't exist
         """
         if key in self._storage:
             return self._storage.get(key)
-        return "the {0} doesn't exist".format(key)
+        raise KeyError("the {0} doesn't exist".format(key))
 
-    def update_item(self, spotify_item: dict, key: str) -> Union[dict, str]:
+    def update_item(self, spotify_item: dict, key: str) -> dict:
         """
         Update item by id.
 
         :param spotify_item: spotify object
         :param key: spotify item id
-        :return: updated item if key exists else returns string that key doesn't exist
+        :return: updated item if key exists
+        :raises: KeyError if key doesn't exist
         """
         old_spotify_item = self._storage.get(key)
         if old_spotify_item is not None:
             self._storage[key] = spotify_item
             return spotify_item
-        return "the {0} doesn't exist".format(key)
+        raise KeyError("the {0} doesn't exist".format(key))
 
-    def delete_by_id(self, key: str) -> Union[None, str]:
+    def delete_by_id(self, key: str) -> None:
         """
         Delete item by id.
 
         :param key: spotify item id
-        :return: None if deleted else returns string that key doesn't exist
+        :return: None if deleted
+        :raises: KeyError if key doesn't exist
         """
         if key in self._storage:
             self._storage.pop(key)
-        else:
-            return "the {0} doesn't exist".format(key)
+            return
+        raise KeyError("the {0} doesn't exist".format(key))
